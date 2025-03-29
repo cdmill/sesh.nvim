@@ -21,14 +21,14 @@ Install the plugin with your preferred package manager:
 ```lua
 -- Lua
 {
-  "cdmill/focus.nvim",
-  cmd = { "Focus", "Zen", "Narrow" },
+  "cdmill/sesh.nvim",
   opts = {
     -- your configuration comes here
     -- or leave it empty to use the default settings
     -- refer to the configuration section below
   }
 }
+```
 
 ## ⚙️ Configuration
 
