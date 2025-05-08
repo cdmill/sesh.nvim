@@ -66,6 +66,7 @@ function M:register()
 end
 
 ---@package
+---Disables autosaving.
 function M:stop()
     self._active = false
     pcall(vim.api.nvim_del_augroup_by_name, "sesh")
