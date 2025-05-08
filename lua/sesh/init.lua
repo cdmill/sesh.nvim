@@ -44,16 +44,20 @@ function M:register()
             M.exec_auto("SavePre")
             if self.options.autosave > 0 then
                 local bufs = vim.tbl_filter(function(b)
+                    local ignore = {
+                        "gitcommit",
+                        "gitrebase",
+                        "jj",
+                    }
                     if
                         vim.bo[b].buftype ~= ""
-                        or vim.tbl_contains(
-                            { "gitcommit", "gitrebase", "jj" },
-                            vim.bo[b].filetype
-                        )
+                        or vim.tbl_contains(ignore, vim.bo[b].filetype)
+                        or vim.api.nvim_buf_get_name(b) == ""
                     then
+                        vim.api.nvim_buf_delete(b)
                         return false
                     end
-                    return vim.api.nvim_buf_get_name(b) ~= ""
+                    return true
                 end, vim.api.nvim_list_bufs())
                 if #bufs < self.options.autosave then
                     return
@@ -239,6 +243,19 @@ function M.setup(opts)
         M:register()
     end
     if M.options.autoload then
+        local gitfiles = {
+            "%.git/commit_editmsg",
+            "%.git/merge_msg",
+            "%.git/rebase%-editmsg",
+            "%.git/squash_msg",
+        }
+        local buf = vim.api.nvim_buf_get_name(0):lower()
+        -- if neovim is opened as a git editor, do not auto-load
+        for _, gitfile in ipairs(gitfiles) do
+            if buf:find(gitfile) then
+                return
+            end
+        end
         M:load()
     end
 end
