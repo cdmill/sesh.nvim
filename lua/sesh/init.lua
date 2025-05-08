@@ -60,8 +60,8 @@ function M:register()
                     end
                     return true
                 end, vim.api.nvim_list_bufs())
-                for i = #to_delete, 1, -1 do
-                    vim.api.nvim_buf_delete(i)
+                for _, bufnr in ipairs(to_delete) do
+                    vim.api.nvim_buf_delete(bufnr)
                 end
                 if #bufs < self.options.autosave then
                     return
