@@ -43,6 +43,7 @@ function M:register()
         callback = function()
             M.exec_auto("SavePre")
             if self.options.autosave > 0 then
+                local to_delete = {}
                 local bufs = vim.tbl_filter(function(b)
                     local ignore = {
                         "gitcommit",
@@ -54,11 +55,14 @@ function M:register()
                         or vim.tbl_contains(ignore, vim.bo[b].filetype)
                         or vim.api.nvim_buf_get_name(b) == ""
                     then
-                        vim.api.nvim_buf_delete(b)
+                        to_delete[b] = true
                         return false
                     end
                     return true
                 end, vim.api.nvim_list_bufs())
+                for i = #to_delete, 1, -1 do
+                    vim.api.nvim_buf_delete(i)
+                end
                 if #bufs < self.options.autosave then
                     return
                 end
