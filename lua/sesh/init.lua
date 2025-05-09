@@ -161,6 +161,13 @@ end
 ---Loads a session.
 ---@param opts? { last?: boolean }
 function M:load(opts)
+    if #vim.fn.argv() > 0 then
+        vim.notify(
+            "SESH: Neovim was opened with additional args. Aborting session autoload.",
+            vim.log.levels.INFO
+        )
+        return
+    end
     opts = opts or {}
     ---@type string
     local file
