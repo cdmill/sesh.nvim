@@ -122,17 +122,19 @@ function M:select()
             end
         end
     end
-    vim.ui.select(items, {
-        prompt = "Select a session: ",
-        format_item = function(item)
-            return vim.fn.fnamemodify(item.dir, ":p:~")
-        end,
-    }, function(item)
-        if item then
-            vim.fn.chdir(item.dir)
-            self:load()
-        end
-    end)
+    if #items > 0 then
+        vim.ui.select(items, {
+            prompt = "Select a session: ",
+            format_item = function(item)
+                return vim.fn.fnamemodify(item.dir, ":p:~")
+            end,
+        }, function(item)
+            if item then
+                vim.fn.chdir(item.dir)
+                self:load()
+            end
+        end)
+    end
 end
 
 ---@package
