@@ -29,43 +29,85 @@ function M.exec_auto(event)
     })
 end
 
+---@param items table?
+local function normalize_criteria(items)
+    if items == nil then
+        return { buffers = 1, splits = 0, tabs = 0 }
+    end
+    items.buffers = items.buffers or 0
+    items.splits = items.splits or 0
+    items.tabs = items.tabs or 0
+    for c, n in ipairs(items) do
+        if type(n) == "boolean" then
+            items[c] = n == true and 1 or 0
+        end
+    end
+    return items
+end
+
+local function handle_buf(min_bufs)
+    if min_bufs == 0 then
+        return false
+    end
+    local to_delete = {}
+    local bufs = vim.tbl_filter(function(b)
+        local ignore = {
+            "gitcommit",
+            "gitrebase",
+            "jj",
+        }
+        if
+            vim.bo[b].buftype ~= ""
+            or vim.tbl_contains(ignore, vim.bo[b].filetype)
+            or vim.api.nvim_buf_get_name(b) == ""
+        then
+            to_delete[b] = true
+            return false
+        end
+        return true
+    end, vim.api.nvim_list_bufs())
+    for _, bufnr in ipairs(to_delete) do
+        vim.api.nvim_buf_delete(bufnr)
+    end
+    if #bufs < min_bufs then
+        return false
+    end
+    return true
+end
+
+local function handle_split(min_splits)
+    if min_splits == 0 then
+        return false
+    end
+    for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
+        if #vim.api.nvim_tabpage_list_wins(tab) >= min_splits then
+            return true
+        end
+    end
+    return false
+end
+
+local function handle_tab(min_tabs)
+    return min_tabs == 0 and false or #vim.api.nvim_list_tabpages() >= min_tabs
+end
+
 ---@package
 ---Registers autocommand for autosaving feature.
 function M:register()
-    if self.options.autosave == false or self.options.autosave == 0 then
+    if self.options.autosave.enabled == false then
         return
-    elseif self.options.autosave == true then
-        self.options.autosave = 1
     end
+    local criteria = self.options.autosave.criteria
+    criteria = normalize_criteria(criteria)
     self._active = true
     vim.api.nvim_create_autocmd("VimLeavePre", {
         group = vim.api.nvim_create_augroup("sesh", { clear = true }),
         callback = function()
             M.exec_auto("SavePre")
-            if self.options.autosave > 0 then
-                local to_delete = {}
-                local bufs = vim.tbl_filter(function(b)
-                    local ignore = {
-                        "gitcommit",
-                        "gitrebase",
-                        "jj",
-                    }
-                    if
-                        vim.bo[b].buftype ~= ""
-                        or vim.tbl_contains(ignore, vim.bo[b].filetype)
-                        or vim.api.nvim_buf_get_name(b) == ""
-                    then
-                        to_delete[b] = true
-                        return false
-                    end
-                    return true
-                end, vim.api.nvim_list_bufs())
-                for _, bufnr in ipairs(to_delete) do
-                    vim.api.nvim_buf_delete(bufnr)
-                end
-                if #bufs < self.options.autosave then
-                    return
-                end
+            local exceed_buf = handle_buf(criteria.buffers)
+            local exceed_split = handle_split(criteria.splits)
+            local exceed_tab = handle_tab(criteria.tabs)
+            if exceed_buf or exceed_split or exceed_tab then
                 self:save()
                 self.exec_auto("SavePost")
             end
