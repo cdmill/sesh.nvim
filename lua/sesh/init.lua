@@ -45,6 +45,7 @@ local function normalize_criteria(items)
     return items
 end
 
+---@return boolean true if the minimum number of bufs are open
 local function handle_buf(min_bufs)
     if min_bufs == 0 then
         return false
@@ -75,6 +76,7 @@ local function handle_buf(min_bufs)
     return true
 end
 
+---@return boolean true if the minimum number of splits are open
 local function handle_split(min_splits)
     if min_splits == 0 then
         return false
@@ -87,6 +89,7 @@ local function handle_split(min_splits)
     return false
 end
 
+---@return boolean true if the minimum number of tabs are open
 local function handle_tab(min_tabs)
     return min_tabs == 0 and false or #vim.api.nvim_list_tabpages() >= min_tabs
 end
@@ -104,10 +107,10 @@ function M:register()
         group = vim.api.nvim_create_augroup("sesh", { clear = true }),
         callback = function()
             M.exec_auto("SavePre")
-            local exceed_buf = handle_buf(criteria.buffers)
-            local exceed_split = handle_split(criteria.splits)
-            local exceed_tab = handle_tab(criteria.tabs)
-            if exceed_buf or exceed_split or exceed_tab then
+            local meets_buf_critera = handle_buf(criteria.buffers)
+            local meets_split_criteria = handle_split(criteria.splits)
+            local meets_tab_criteria = handle_tab(criteria.tabs)
+            if meets_buf_critera or meets_split_criteria or meets_tab_criteria then
                 self:save()
                 self.exec_auto("SavePost")
             end
