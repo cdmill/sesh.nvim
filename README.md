@@ -52,7 +52,7 @@ SESH.nvim comes with the following defaults:
 ## 🚀 Usage
 
 - Open session picker `:Sesh`.
-- Check if SESH.nvim has autosave enabled `:Sesh ?`.
+- Check if SESH.nvim has autosave enabled `:Sesh?`.
 - Disable autosave if it is enabled `:Sesh!`.
 - Save session for cwd `:Sesh save`.
 - Load session for cwd `:Sesh load`.
@@ -62,6 +62,13 @@ SESH.nvim comes with the following defaults:
 Add the `<bang>` suffix to `Sesh` on any command to disable autosaving for the cwd. For
 example, running `:Sesh! del` will delete the session for the cwd and disable autosaving
 if enabled.
+
+Other supported suffixes are as follows:
+
+- `:Sesh+` == `:Sesh save`
+- `:Sesh-` == `:Sesh del`
+- `:Sesh<` == `:Sesh load`
+- `:Sesh~` == `:Sesh clean`
 
 ## Inspiration
 

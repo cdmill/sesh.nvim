@@ -221,6 +221,10 @@ end
 ---@param opts NvimCommandOpts
 function M.action(opts)
     local subcommands = {
+        ["+"] = M.save,
+        ["-"] = M.delete,
+        ["<"] = M.load,
+        ["~"] = M.clean,
         ["?"] = M.active,
         ["clean"] = M.clean,
         ["del"] = M.delete,
