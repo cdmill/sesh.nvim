@@ -6,8 +6,9 @@ a fork of Folke's [persistence.nvim](https://github.com/folke/persistence.nvim) 
 
 - simple API to save, load, and manage sessions
 - options to automatically save or load sessions
-- smart loading -- don't autoload session if neovim was opened as the git editor or if
+- *smart autoloading* := don't autoload session if neovim was opened as the git editor or if
   neovim was opened with a file argument
+- *smart autosaving* := specify minimum number of buffers, splits, or tabs to trigger autosave
 
 ## ⚡️ Requirements
 
@@ -40,11 +41,14 @@ SESH.nvim comes with the following defaults:
 {
     -- directory where session files are saved
     dir = vim.fn.stdpath("state") .. "/sessions/",
-    -- if true, auto-saves session before exiting vim. if a number, specifies the
-    -- minimum number of file buffers to be open for a session to be saved. note that
-    -- autosave=true is equivalent to autosave=1, and autosave=false is equivalent to
-    autosave=0
-    autosave = false,
+    autosave = {
+        enabled = false, -- if true, autosave session before exiting
+        -- criteria = {
+        --     buffers = 2, -- min number to trigger autosaving
+        --     tabs = false, -- use false or don't specify criteria to ignore
+        --     splits = 0, -- equivalent to false
+        -- },
+    },
     -- if true, auto-loads session (if one exists) when starting vim
     autoload = false,
     -- if true, use git branch to save session
