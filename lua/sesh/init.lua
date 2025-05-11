@@ -100,19 +100,24 @@ function M:register()
     if self.options.autosave.enabled == false then
         return
     end
-    local criteria = self.options.autosave.criteria
-    criteria = normalize_criteria(criteria)
     self._active = true
+    local criteria = normalize_criteria(self.options.autosave.criteria)
+    local handlers = {
+        buffers = handle_buf,
+        splits = handle_split,
+        tabs = handle_tab,
+    }
+
     vim.api.nvim_create_autocmd("VimLeavePre", {
-        group = vim.api.nvim_create_augroup("sesh", { clear = true }),
+        group = vim.api.nvim_create_augroup("SESH", { clear = true }),
         callback = function()
-            M.exec_auto("SavePre")
-            local meets_buf_critera = handle_buf(criteria.buffers)
-            local meets_split_criteria = handle_split(criteria.splits)
-            local meets_tab_criteria = handle_tab(criteria.tabs)
-            if meets_buf_critera or meets_split_criteria or meets_tab_criteria then
-                self:save()
-                self.exec_auto("SavePost")
+            self.exec_auto("SavePre")
+            for k, v in pairs(criteria) do
+                if handlers[k](v) then
+                    self:save()
+                    self.exec_auto("SavePost")
+                    return
+                end
             end
         end,
     })
@@ -122,7 +127,7 @@ end
 ---Disables autosaving.
 function M:stop()
     self._active = false
-    pcall(vim.api.nvim_del_augroup_by_name, "sesh")
+    pcall(vim.api.nvim_del_augroup_by_name, "SESH")
 end
 
 ---@package
