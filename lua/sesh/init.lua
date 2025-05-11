@@ -4,32 +4,18 @@ M._active = false
 
 local e = vim.fn.fnameescape
 
----@package
----Computes and returns the name for the current session.
----@param opts? {branch?: boolean}
----@return string
-function M:current(opts)
-    opts = opts or {}
-    local name = vim.fn.getcwd():gsub("[\\/:]+", "%%")
-    if self.options.use_branch and opts.branch then
-        local branch = self:branch()
-        if branch and branch ~= "main" and branch ~= "master" then
-            name = name .. "%%" .. branch:gsub("[\\/:]+", "%%")
-        end
-    end
-    return self.options.dir .. name .. ".vim"
-end
-
----@package
----Executes autocommands specified by a Sesh event.
----@param event string
-function M.exec_auto(event)
-    vim.api.nvim_exec_autocmds("User", {
-        pattern = "SESH" .. event,
-    })
-end
-
+---Ensures that Config.autosave.criteria is of the following form:
+---
+---     {
+---         buffers = <number>,
+---         splits = <number>,
+---         tabs = <number>,
+---     }
+---
+---This is necessary because the user is allowed to use numbers, booleans, or nil to
+---specify criteria,
 ---@param items table?
+---@return sesh.autosaveCriteria
 local function normalize_criteria(items)
     if items == nil then
         return { buffers = 1, splits = 0, tabs = 0 }
@@ -95,13 +81,32 @@ local function handle_tab(min_tabs)
 end
 
 ---@package
+---Gets current branch name.
+---@return string?
+function M.branch()
+    if vim.uv.fs_stat(".git") then
+        local ret = vim.fn.systemlist("git branch --show-current")[1]
+        return vim.v.shell_error == 0 and ret or nil
+    end
+end
+
+---@package
+---Executes autocommands specified by a Sesh event.
+---@param event string
+function M.exec_auto(event)
+    vim.api.nvim_exec_autocmds("User", {
+        pattern = "SESH" .. event,
+    })
+end
+
+---@package
 ---Registers autocommand for autosaving feature.
-function M:register()
-    if self.options.autosave.enabled == false then
+function M.register()
+    if M.options.autosave.enabled == false then
         return
     end
-    self._active = true
-    local criteria = normalize_criteria(self.options.autosave.criteria)
+    M._active = true
+    local criteria = normalize_criteria(M.options.autosave.criteria)
     local handlers = {
         buffers = handle_buf,
         splits = handle_split,
@@ -111,23 +116,16 @@ function M:register()
     vim.api.nvim_create_autocmd("VimLeavePre", {
         group = vim.api.nvim_create_augroup("SESH", { clear = true }),
         callback = function()
-            self.exec_auto("SavePre")
+            M.exec_auto("SavePre")
             for k, v in pairs(criteria) do
                 if handlers[k](v) then
-                    self:save()
-                    self.exec_auto("SavePost")
+                    M.save()
+                    M.exec_auto("SavePost")
                     return
                 end
             end
         end,
     })
-end
-
----@package
----Disables autosaving.
-function M:stop()
-    self._active = false
-    pcall(vim.api.nvim_del_augroup_by_name, "SESH")
 end
 
 ---@package
@@ -146,21 +144,77 @@ end
 ---@package
 ---Returns the most recent session.
 ---@return string
-function M:last()
-    return self.list()[1]
+function M.last()
+    return M.list()[1]
+end
+
+---@package
+---Computes and returns the name for the current session.
+---@param opts? {branch?: boolean}
+---@return string
+function M.current(opts)
+    opts = opts or {}
+    local name = vim.fn.getcwd():gsub("[\\/:]+", "%%")
+    if M.options.use_branch and opts.branch then
+        local branch = M.branch()
+        if branch and branch ~= "main" and branch ~= "master" then
+            name = name .. "%%" .. branch:gsub("[\\/:]+", "%%")
+        end
+    end
+    return M.options.dir .. name .. ".vim"
+end
+
+---@package
+---Disables autosaving for current neovim process.
+function M.stop()
+    M._active = false
+    pcall(vim.api.nvim_del_augroup_by_name, "SESH")
+end
+
+---Returns true if Sesh.nvim is currently active, ie if session will be autosaved before
+---exiting vim, and false otherwise.
+---@return boolean
+function M.active()
+    vim.notify("SESH: autosave is active", vim.log.levels.INFO)
+    return M._active
+end
+
+---Saves a session to the directory specified in config.
+function M.save()
+    vim.cmd("mks! " .. e(M.current()))
+end
+
+---Deletes all saved sessions.
+function M.clean()
+    for _, session in ipairs(M.list()) do
+        vim.fs.rm(session)
+    end
+end
+
+---@return boolean true if session for cwd exists
+function M.exists()
+    return vim.tbl_contains(M.list(), M.current())
+end
+
+---Deletes saved session for cwd.
+function M.delete()
+    if not M.exists() then
+        vim.notify("SESH: current session does not exist", vim.log.levels.DEBUG)
+    end
+    vim.fs.rm(M.current())
 end
 
 ---@package
 ---Opens a picker for saved sessions using `vim.ui.select`.
-function M:select()
+function M.select()
     ---@type { session: string, dir: string, branch?: string }[]
     local items = {}
     ---@type table<string, boolean>
     local have = {}
 
-    for _, session in ipairs(self.list()) do
+    for _, session in ipairs(M.list()) do
         if vim.uv.fs_stat(session) then
-            local file = session:sub(#self.options.dir + 1, -5)
+            local file = session:sub(#M.options.dir + 1, -5)
             local dir, branch = unpack(vim.split(file, "%%", { plain = true }))
             dir = dir:gsub("%%", "/")
             if jit.os:find("Windows") then
@@ -181,38 +235,15 @@ function M:select()
         }, function(item)
             if item then
                 vim.fn.chdir(item.dir)
-                self:load()
+                M.load()
             end
         end)
     end
 end
 
----@package
----Gets current branch name.
----@return string?
-function M.branch()
-    if vim.uv.fs_stat(".git") then
-        local ret = vim.fn.systemlist("git branch --show-current")[1]
-        return vim.v.shell_error == 0 and ret or nil
-    end
-end
-
----Returns true if Sesh.nvim is currently active, ie if session will be autosaved before
----exiting vim, and false otherwise.
----@return boolean
-function M:active()
-    vim.notify("SESH: autosave is active", vim.log.levels.INFO)
-    return self._active
-end
-
----Saves a session to directory specified in config.
-function M:save()
-    vim.cmd("mks! " .. e(self:current()))
-end
-
----Loads a session.
+---Loads the session for the cwd if it exists.
 ---@param opts? { last?: boolean }
-function M:load(opts)
+function M.load(opts)
     if #vim.fn.argv() > 0 then
         vim.notify(
             "SESH: Neovim was opened with additional args. Aborting session autoload.",
@@ -224,11 +255,11 @@ function M:load(opts)
     ---@type string
     local file
     if opts.last then
-        file = self:last()
+        file = M.last()
     else
-        file = self:current()
+        file = M.current()
         if vim.fn.filereadable(file) == 0 then
-            file = self:current({ branch = false })
+            file = M.current({ branch = false })
         end
     end
     if file and vim.fn.filereadable(file) ~= 0 then
@@ -236,26 +267,6 @@ function M:load(opts)
         vim.cmd("silent! source " .. e(file))
         M.exec_auto("LoadPost")
     end
-end
-
----Deletes all saved sessions.
-function M:clean()
-    for _, session in ipairs(self.list()) do
-        vim.fs.rm(session)
-    end
-end
-
----@return boolean true if session for cwd exists
-function M:exists()
-    return vim.tbl_contains(M.list(), M:current())
-end
-
----Deletes saved session for cwd.
-function M:delete()
-    if not vim.tbl_contains(self.list(), self:current()) then
-        vim.notify("SESH: current session does not exist", vim.log.levels.DEBUG)
-    end
-    vim.fs.rm(self:current())
 end
 
 ---@class NvimCommandOpts
@@ -295,7 +306,7 @@ function M.action(opts)
     }
     if #opts.fargs == 0 then
         if opts.bang then
-            M:stop()
+            M.stop()
             return
         end
         opts.args = "select"
@@ -303,7 +314,7 @@ function M.action(opts)
     local action = subcommands[opts.args] or subcommands.unknown
     action(M)
     if opts.bang then
-        M:stop()
+        M.stop()
     end
 end
 
@@ -315,7 +326,7 @@ function M.setup(opts)
     vim.api.nvim_create_user_command("Sesh", M.action, { bang = true, nargs = "*" })
 
     if M.options.autosave then
-        M:register()
+        M.register()
     end
     if M.options.autoload then
         local gitfiles = {
@@ -331,7 +342,7 @@ function M.setup(opts)
                 return
             end
         end
-        M:load()
+        M.load()
     end
 end
 
