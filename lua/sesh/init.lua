@@ -1,6 +1,7 @@
 local Config = require("sesh.config")
 local M = {}
 M._active = false
+M.options = Config.default
 
 local e = vim.fn.fnameescape
 
@@ -250,16 +251,11 @@ M.load = function()
         )
         return
     end
-    opts = opts or {}
     ---@type string
     local file
-    if opts.last then
-        file = M.last()
-    else
-        file = M.current()
-        if vim.fn.filereadable(file) == 0 then
-            file = M.current({ branch = false })
-        end
+    file = M.current()
+    if vim.fn.filereadable(file) == 0 then
+        file = M.current({ branch = false })
     end
     if file and vim.fn.filereadable(file) ~= 0 then
         M.exec_auto("LoadPre")
