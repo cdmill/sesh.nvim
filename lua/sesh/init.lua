@@ -156,7 +156,7 @@ end
 M.current = function(opts)
     opts = opts or {}
     local name = vim.fn.getcwd():gsub("[\\/:]+", "%%")
-    if M.options.use_branch and opts.branch then
+    if M.options.use_branch then
         local branch = M.branch()
         if branch and branch ~= "main" and branch ~= "master" then
             name = name .. "%%" .. branch:gsub("[\\/:]+", "%%")
