@@ -67,8 +67,8 @@ local function handle_buf(min_bufs)
         end
         return true
     end, vim.api.nvim_list_bufs())
-    for _, bufnr in ipairs(to_delete) do
-        vim.api.nvim_buf_delete(bufnr)
+    for bufnr in pairs(to_delete) do
+        vim.api.nvim_buf_delete(bufnr, {})
     end
     if #bufs < min_bufs then
         return false
