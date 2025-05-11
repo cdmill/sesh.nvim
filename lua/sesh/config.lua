@@ -1,9 +1,13 @@
 local M = {}
 
+---@class sesh.autosaveCriteria
+---@field buffers number|boolean|nil min # of bufs to trigger autosave
+---@field splits number|boolean|nil min # of splits to trigger autosave
+---@field tabs number|boolean|nil min # of tabs to trigger autosave
+
 ---@class sesh.autosaveOpts
 ---@field enabled boolean if true, autosave session before exiting
----@field criteria? table number of "buffers", "splits", or "tabs" to use as condition
----for autosaving
+---@field criteria? sesh.autosaveCriteria
 
 ---@class (exact) sesh.Config
 ---directory where session files are saved
@@ -19,8 +23,8 @@ M.default = {
         enabled = false,
         -- criteria = {
         --     buffers = 2,
-        --     tabs = false,
         --     splits = false,
+        --     tabs = false,
         -- },
     },
     autoload = false,
