@@ -245,6 +245,11 @@ function M:clean()
     end
 end
 
+---@return boolean true if session for cwd exists
+function M:exists()
+    return vim.tbl_contains(M.list(), M:current())
+end
+
 ---Deletes saved session for cwd.
 function M:delete()
     if not vim.tbl_contains(self.list(), self:current()) then
