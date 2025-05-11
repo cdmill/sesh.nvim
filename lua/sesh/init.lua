@@ -1,6 +1,7 @@
 local Config = require("sesh.config")
 local M = {}
 M._active = false
+M.options = Config.default
 
 local e = vim.fn.fnameescape
 
@@ -83,7 +84,7 @@ end
 ---@package
 ---Gets current branch name.
 ---@return string?
-function M.branch()
+M.branch = function()
     if vim.uv.fs_stat(".git") then
         local ret = vim.fn.systemlist("git branch --show-current")[1]
         return vim.v.shell_error == 0 and ret or nil
@@ -93,7 +94,7 @@ end
 ---@package
 ---Executes autocommands specified by a Sesh event.
 ---@param event string
-function M.exec_auto(event)
+M.exec_auto = function(event)
     vim.api.nvim_exec_autocmds("User", {
         pattern = "SESH" .. event,
     })
@@ -101,7 +102,7 @@ end
 
 ---@package
 ---Registers autocommand for autosaving feature.
-function M.register()
+M.register = function()
     if M.options.autosave.enabled == false then
         return
     end
@@ -132,7 +133,7 @@ end
 ---Lists all saved sessions and sorts them in descending order according to creation
 ---time.
 ---@return string[]
-function M.list()
+M.list = function()
     ---@type string[]
     local sessions = vim.fn.glob(M.options.dir .. "*.vim", true, true)
     table.sort(sessions, function(a, b)
@@ -144,7 +145,7 @@ end
 ---@package
 ---Returns the most recent session.
 ---@return string
-function M.last()
+M.last = function()
     return M.list()[1]
 end
 
@@ -152,7 +153,7 @@ end
 ---Computes and returns the name for the current session.
 ---@param opts? {branch?: boolean}
 ---@return string
-function M.current(opts)
+M.current = function(opts)
     opts = opts or {}
     local name = vim.fn.getcwd():gsub("[\\/:]+", "%%")
     if M.options.use_branch and opts.branch then
@@ -166,7 +167,7 @@ end
 
 ---@package
 ---Disables autosaving for current neovim process.
-function M.stop()
+M.stop = function()
     M._active = false
     pcall(vim.api.nvim_del_augroup_by_name, "SESH")
 end
@@ -174,30 +175,30 @@ end
 ---Returns true if Sesh.nvim is currently active, ie if session will be autosaved before
 ---exiting vim, and false otherwise.
 ---@return boolean
-function M.active()
+M.active = function()
     vim.notify("SESH: autosave is active", vim.log.levels.INFO)
     return M._active
 end
 
 ---Saves a session to the directory specified in config.
-function M.save()
+M.save = function()
     vim.cmd("mks! " .. e(M.current()))
 end
 
 ---Deletes all saved sessions.
-function M.clean()
+M.clean = function()
     for _, session in ipairs(M.list()) do
         vim.fs.rm(session)
     end
 end
 
 ---@return boolean true if session for cwd exists
-function M.exists()
+M.exists = function()
     return vim.tbl_contains(M.list(), M.current())
 end
 
 ---Deletes saved session for cwd.
-function M.delete()
+M.delete = function()
     if not M.exists() then
         vim.notify("SESH: current session does not exist", vim.log.levels.DEBUG)
     end
@@ -206,7 +207,7 @@ end
 
 ---@package
 ---Opens a picker for saved sessions using `vim.ui.select`.
-function M.select()
+M.select = function()
     ---@type { session: string, dir: string, branch?: string }[]
     local items = {}
     ---@type table<string, boolean>
@@ -242,8 +243,7 @@ function M.select()
 end
 
 ---Loads the session for the cwd if it exists.
----@param opts? { last?: boolean }
-function M.load(opts)
+M.load = function()
     if #vim.fn.argv() > 0 then
         vim.notify(
             "SESH: Neovim was opened with additional args. Aborting session autoload.",
@@ -251,16 +251,11 @@ function M.load(opts)
         )
         return
     end
-    opts = opts or {}
     ---@type string
     local file
-    if opts.last then
-        file = M.last()
-    else
-        file = M.current()
-        if vim.fn.filereadable(file) == 0 then
-            file = M.current({ branch = false })
-        end
+    file = M.current()
+    if vim.fn.filereadable(file) == 0 then
+        file = M.current({ branch = false })
     end
     if file and vim.fn.filereadable(file) ~= 0 then
         M.exec_auto("LoadPre")
@@ -288,7 +283,7 @@ end
 ---command, turns off autosaving if it is on. If no subcommand is included, defaults to
 ---`:Sesh select`.
 ---@param opts NvimCommandOpts
-function M.action(opts)
+M.action = function(opts)
     local subcommands = {
         ["+"] = M.save,
         ["-"] = M.delete,
@@ -312,14 +307,14 @@ function M.action(opts)
         opts.args = "select"
     end
     local action = subcommands[opts.args] or subcommands.unknown
-    action(M)
+    action()
     if opts.bang then
         M.stop()
     end
 end
 
 ---@param opts sesh.Config
-function M.setup(opts)
+M.setup = function(opts)
     ---@type sesh.Config
     M.options = vim.tbl_deep_extend("force", {}, Config.default, opts or {})
     vim.fn.mkdir(M.options.dir, "p")
