@@ -25,7 +25,7 @@ end
 ---@param event string
 function M.exec_auto(event)
     vim.api.nvim_exec_autocmds("User", {
-        pattern = "Sesh" .. event,
+        pattern = "SESH" .. event,
     })
 end
 
@@ -196,7 +196,7 @@ end
 ---exiting vim, and false otherwise.
 ---@return boolean
 function M:active()
-    vim.notify("Sesh: autosave is active", vim.log.levels.INFO)
+    vim.notify("SESH: autosave is active", vim.log.levels.INFO)
     return self._active
 end
 
@@ -242,6 +242,9 @@ end
 
 ---Deletes saved session for cwd.
 function M:delete()
+    if not vim.tbl_contains(self.list(), self:current()) then
+        vim.notify("SESH: current session does not exist", vim.log.levels.DEBUG)
+    end
     vim.fs.rm(self:current())
 end
 
@@ -277,7 +280,7 @@ function M.action(opts)
         ["save"] = M.save,
         ["select"] = M.select,
         ["unknown"] = function()
-            vim.notify("Sesh: unknown commands", vim.log.levels.ERROR)
+            vim.notify("SESH: unknown commands", vim.log.levels.ERROR)
         end,
     }
     if #opts.fargs == 0 then
